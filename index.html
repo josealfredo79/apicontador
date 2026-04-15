@@ -509,18 +509,17 @@ node_modules/</code>
                 <pre><code>require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const { Keypair, Networks, SorobanRpc, TransactionBuilder, BASE_FEE, Operation } = require('@stellar/stellar-sdk');
+const { Keypair, Networks, rpc, TransactionBuilder, BASE_FEE, Operation, Contract } = require('@stellar/stellar-sdk');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const server = new SorobanRpc.Server(process.env.RPC_URL || 'https://soroban-testnet.stellar.org');
+const server = new rpc.Server(process.env.RPC_URL || 'https://soroban-testnet.stellar.org');
 
 app.use(cors());
 app.use(express.json());
 
-const contractId = process.env.CONTRACT_ID;
-const sourceKeypair = Keypair.fromSecret(process.env.SECRET_KEY);</code></pre>
+const contractId = process.env.CONTRACT_ID;</code></pre>
             </div>
         </section>
 
@@ -655,7 +654,7 @@ curl -X POST http://localhost:3000/contador/reset</code></pre>
 
 # 1. INSTALAR DEPENDENCIAS
 cd api-contador
-npm install express cors dotenv @stellar/stellar-sdk
+npm install express cors dotenv @stellar/stellar-sdk@15
 
 # 2. CONFIGURAR .env
 cp .env.example .env
