@@ -331,6 +331,110 @@
             font-size: 2em;
         }
 
+        .animation-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 30px 0;
+            padding: 20px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 15px;
+        }
+
+        .animation-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .step-label {
+            font-size: 0.85em;
+            color: #8b949e;
+            font-weight: bold;
+        }
+
+        .packet {
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85em;
+            animation: none;
+        }
+
+        .packet.request {
+            background: linear-gradient(135deg, #4ecdc4, #45b7aa);
+            color: #1a1a2e;
+        }
+
+        .packet.response {
+            background: linear-gradient(135deg, #e94560, #c73e54);
+            color: #fff;
+        }
+
+        .server-box {
+            background: #0f3460;
+            padding: 20px 30px;
+            border-radius: 10px;
+            color: #4ecdc4;
+            font-size: 0.85em;
+        }
+
+        .contract-box {
+            background: #2d1b4e;
+            padding: 20px 30px;
+            border-radius: 10px;
+            font-size: 2em;
+        }
+
+        .arrow-flow {
+            color: #4ecdc4;
+            font-size: 1.5em;
+            animation: none;
+        }
+
+        @keyframes moveRight {
+            0% { transform: translateX(0); opacity: 1; }
+            100% { transform: translateX(50px); opacity: 0; }
+        }
+
+        @keyframes moveLeft {
+            0% { transform: translateX(0); opacity: 1; }
+            100% { transform: translateX(-50px); opacity: 0; }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .packet.animating-right {
+            animation: moveRight 1s ease-in-out forwards;
+        }
+
+        .packet.animating-left {
+            animation: moveLeft 1s ease-in-out forwards;
+        }
+
+        .server-box.processing {
+            animation: pulse 0.5s ease-in-out infinite;
+        }
+
+        .contract-box.processing {
+            animation: spin 1s linear infinite;
+        }
+
+        .reverse {
+            transform: scaleX(-1);
+        }
+
         .request-example {
             background: #0d1117;
             border-radius: 10px;
@@ -377,6 +481,7 @@
     <nav>
         <ul>
             <li><a href="#intro">Introducción</a></li>
+            <li><a href="#animacion">Animación</a></li>
             <li><a href="#instalacion">Instalación</a></li>
             <li><a href="#configuracion">Configuración</a></li>
             <li><a href="#endpoints">Endpoints</a></li>
@@ -412,6 +517,30 @@
                     <h5>📦 Contrato</h5>
                     <p>TestNet</p>
                 </div>
+            </div>
+
+            <h3>🔄 Cómo Fluyen los Datos</h3>
+            <div class="animation-container" id="animacion">
+                <div class="animation-box">
+                    <div class="step-label">1. Tú</div>
+                    <div class="packet request" id="packet1">GET /contador</div>
+                </div>
+                <div class="arrow-flow">→</div>
+                <div class="animation-box">
+                    <div class="step-label">2. API</div>
+                    <div class="server-box">Procesando...</div>
+                </div>
+                <div class="arrow-flow">→</div>
+                <div class="animation-box">
+                    <div class="step-label">3. Blockchain</div>
+                    <div class="contract-box">📦</div>
+                </div>
+                <div class="arrow-flow reverse">←</div>
+                <div class="animation-box">
+                    <div class="step-label">4. Respuesta</div>
+                    <div class="packet response" id="packet2">{ valor: 5 }</div>
+                </div>
+                <button class="btn" onclick="playAnimation()" style="margin-top: 20px;">▶️ Reproducir Animación</button>
             </div>
 
             <div class="card">
@@ -739,6 +868,58 @@ curl http://localhost:3000/contador</code></pre>
                 target.scrollIntoView({ behavior: 'smooth' });
             });
         });
+
+        function playAnimation() {
+            const packet1 = document.getElementById('packet1');
+            const packet2 = document.getElementById('packet2');
+            const serverBox = document.querySelector('.server-box');
+            const contractBox = document.querySelector('.contract-box');
+            const btn = document.querySelector('.animation-container .btn');
+
+            packet1.classList.remove('animating-right', 'animating-left');
+            packet2.classList.remove('animating-right', 'animating-left');
+            serverBox.classList.remove('processing');
+            contractBox.classList.remove('processing');
+            void packet1.offsetWidth;
+
+            btn.disabled = true;
+            btn.textContent = '⏳ Ejecutando...';
+
+            packet1.classList.add('animating-right');
+
+            setTimeout(() => {
+                serverBox.textContent = '⚙️ Procesando...';
+                serverBox.classList.add('processing');
+            }, 900);
+
+            setTimeout(() => {
+                contractBox.classList.add('processing');
+                serverBox.textContent = '📡 Enviando...';
+            }, 1800);
+
+            setTimeout(() => {
+                serverBox.textContent = '✅ Listo!';
+                serverBox.classList.remove('processing');
+                contractBox.classList.remove('processing');
+                contractBox.textContent = '📦 5';
+            }, 2800);
+
+            setTimeout(() => {
+                serverBox.textContent = '📤 Enviando...';
+                packet2.classList.add('animating-left');
+            }, 3500);
+
+            setTimeout(() => {
+                packet2.classList.remove('animating-left');
+                serverBox.textContent = '¡Listo!';
+            }, 4500);
+
+            setTimeout(() => {
+                serverBox.textContent = 'Listo para procesar';
+                btn.disabled = false;
+                btn.textContent = '▶️ Reproducir Animación';
+            }, 5000);
+        }
     </script>
 </body>
 </html>
