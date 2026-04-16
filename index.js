@@ -2,11 +2,14 @@
  * 📡 API CONTADOR SOROBAN - EXPLICADO PARA ESTUDIANTES
  * =============================================================================
  * 
- * ¿Qué es una API?
- * ---------------
- * Una API (Application Programming Interface) es como un "mesero" en un restaurant.
- * Tu (el cliente) le pides algo al mesero, el mesero va a la cocina (el servidor),
- * prepara tu comida (procesa la solicitud), y te la trae (te responde).
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │                        📚 QUÉ ES UNA API                                │
+ * └─────────────────────────────────────────────────────────────────────────┘
+ * 
+ * Una API (Application Programming Interface) es como un "mesero" en un 
+ * restaurant. Tu (el cliente) le pides algo al mesero, el mesero va a la 
+ * cocina (el servidor), prepara tu comida (procesa la solicitud), y te 
+ * la trae (te responde).
  * 
  * En nuestro caso:
  * - Tú = Tu navegador o app
@@ -14,18 +17,81 @@
  * - Cocina = Stellar Blockchain (Contrato Inteligente)
  * - Comida = El valor del contador
  * 
- * ¿Cómo funciona este código?
- * --------------------------
- * 1. El usuario hace una petición (request) desde su navegador
- * 2. Express recibe la petición y la "entiende"
- * 3. Express usa el SDK de Stellar para hablar con la blockchain
- * 4. El contrato inteligente procesa la operación
- * 5. Express te devuelve el resultado (response)
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │                    🔍 QUÉ ES UN ENDPOINT                              │
+ * └─────────────────────────────────────────────────────────────────────────┘
  * 
- * Conceptos clave:
- * - GET  = Pedir información (leer)
- * - POST = Enviar información (escribir/cambiar)
- * - JSON = Formato para enviar datos (como un objeto de JavaScript)
+ * Un endpoint es como una DIRECCIÓN específica dentro de la API. Es como 
+ * las habitaciones de un hotel:
+ * 
+ *   /recepcion    → Preguntar por una habitación
+ *   /habitacion/101 → Ir a la habitación 101
+ *   /restaurante  → Ir a comer
+ *   /spa          → Ir al spa
+ * 
+ * Cada endpoint hace algo diferente:
+ * 
+ *   GET    /contador           → Leer el valor actual
+ *   POST   /contador/increment → Sumar 1 al contador
+ *   POST   /contador/decrement → Restar 1 al contador
+ *   POST   /contador/reset     → Reiniciar a 0
+ * 
+ * ┌─────────────────────────────────────────────────────────────────────────┐
+ * │                   🏗️ ESTRUCTURA DE UNA API REST                        │
+ * └─────────────────────────────────────────────────────────────────────────┘
+ * 
+ * Una API REST tiene esta estructura:
+ * 
+ *   ┌──────────────┐      ┌──────────────┐      ┌──────────────┐
+ *   │   CLIENTE    │ ───▶ │    SERVIDOR  │ ───▶ │  BLOCKCHAIN  │
+ *   │ (Tu navegador)│      │   (Express)  │      │  (Soroban)   │
+ *   └──────────────┘      └──────────────┘      └──────────────┘
+ *         │                      │                      │
+ *         │  1. Request         │                      │
+ *         │  (GET /contador)    │                      │
+ *         ▼                     │                      │
+ *         │                     ▼                      │
+ *         │              ┌──────────────┐              │
+ *         │              │   RUTAS      │              │
+ *         │              │ (Endpoints)  │              │
+ *         │              └──────────────┘              │
+ *         │                     │                      │
+ *         │                     ▼                      │
+ *         │              ┌──────────────┐              │
+ *         │              │  CONTROLADORES│             │
+ *         │              │ (Funciones)  │              │
+ *         │              └──────────────┘              │
+ *         │                     │                      │
+ *         │                     ▼                      │
+ *         │              ┌──────────────┐              │
+ *         │              │   SERVICIOS  │              │
+ *         │              │ (Stellar SDK)│              │
+ *         │              └──────────────┘              │
+ *         │                     │                      │
+ *         │  2. Response        │                      │
+ *         │  { valor: 5 }        │                      │
+ *         ▼                     │                      │
+ *   ┌──────────────┐            │                      ▼
+ *   │   PANTALLA   │ ◀──────────┴──────────────────────┘
+ *   │  (Resultado) │
+ *   └──────────────┘
+ * 
+ * Partes de una URL de API:
+ * 
+ *   https://servidor:puerto/endpoint
+ *   │          │       │        │
+ *   │          │       │        └── La "puerta" específica (qué acción)
+ *   │          │       └────────── El puerto (3000)
+ *   │          └──────────────── El servidor (localhost)
+ *   └─────────────────────────── El protocolo (https)
+ * 
+ * Métodos HTTP más comunes:
+ * 
+ *   GET    → LEER datos (como ver el contador)
+ *   POST   → CREAR datos (como incrementar)
+ *   PUT    → ACTUALIZAR datos (como cambiar todo el valor)
+ *   DELETE → BORRAR datos (como eliminar el contador)
+ * 
  * ============================================================================= */
 
 require('dotenv').config(); // Carga configuración desde archivo .env
@@ -167,21 +233,10 @@ async function ejecutarContrato(funcionNombre) {
 
 /* app.get('/', ...)
  * --------------
- * Raíz: Muestra información sobre la API
+ * Sirve el archivo index.html (tutorial)
  */
 app.get('/', (req, res) => {
-    res.json({
-        nombre: 'API Contador Soroban',
-        version: '1.0.0',
-        descripcion: 'API educativa para aprender sobre blockchain y smart contracts',
-        contrato: contractId,
-        como_usar: {
-            obtener_valor: 'GET http://localhost:3000/contador',
-            incrementar: 'POST http://localhost:3000/contador/increment',
-            decrementar: 'POST http://localhost:3000/contador/decrement',
-            reiniciar: 'POST http://localhost:3000/contador/reset'
-        }
-    });
+    res.sendFile(__dirname + '/index.html');
 });
 
 /* app.get('/health', ...)

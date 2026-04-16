@@ -594,6 +594,7 @@
             <li><a href="#animacion">Animación</a></li>
             <li><a href="#consumo">Consumo API</a></li>
             <li><a href="#demo">Demo</a></li>
+            <li><a href="#endpoint-explanation">Endpoint</a></li>
             <li><a href="#ciclo">Ciclo</a></li>
             <li><a href="#instalacion">Instalación</a></li>
             <li><a href="#configuracion">Config</a></li>
@@ -673,6 +674,76 @@
                 <span class="status-badge status-success">Conexión TestNet</span>
                 <span class="status-badge status-success">Manejo de Errores</span>
                 <span class="status-badge status-success">CORS Habilitado</span>
+            </div>
+        </section>
+
+        <section id="endpoint-explanation">
+            <h2>📍 ¿Qué es un Endpoint?</h2>
+            
+            <div class="card">
+                <h4>🔑 Definición Simple</h4>
+                <p>Un <strong>endpoint</strong> es como una <strong>puerta específica</strong> en un edificio (la API). Cada puerta hace algo diferente:</p>
+            </div>
+
+            <div class="step">
+                <span class="step-number">🏠</span>
+                <strong>Analogía del Edificio</strong>
+                <p style="margin-left: 40px; margin-top: 10px;">
+                    Imaginá un hospital con diferentes consultorios:<br>
+                    • <strong>/cardiología</strong> → Ver cardiologist<br>
+                    • <strong>/pediatría</strong> → Ver pediatrician<br>
+                    • <strong>/emergencias</strong> → Atención de urgencia
+                </p>
+            </div>
+
+            <div class="step">
+                <span class="step-number">🔧</span>
+                <strong>Endpoints de Nuestra API</strong>
+                <p style="margin-left: 40px; margin-top: 10px;">
+                    Nuestra API tiene estas "puertas":
+                </p>
+                <table style="margin-left: 40px; margin-top: 10px;">
+                    <tr>
+                        <td><code>/contador</code></td>
+                        <td>→ Leer el valor actual</td>
+                    </tr>
+                    <tr>
+                        <td><code>/contador/increment</code></td>
+                        <td>→ Sumar 1</td>
+                    </tr>
+                    <tr>
+                        <td><code>/contador/decrement</code></td>
+                        <td>→ Restar 1</td>
+                    </tr>
+                    <tr>
+                        <td><code>/contador/reset</code></td>
+                        <td>→ Reiniciar a 0</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div class="step">
+                <span class="step-number">🔤</span>
+                <strong>Partes de un Endpoint</strong>
+                <div style="margin-left: 40px; margin-top: 15px;">
+                    <div class="request-example">
+                        <code>
+                            <span style="color: #4ecdc4;">GET</span> 
+                            <span style="color: #ffa657;">http://localhost:3000/contador</span>
+                        </code>
+                    </div>
+                    <ul style="margin-top: 10px; margin-left: 20px; color: #c0c0c0;">
+                        <li><strong style="color: #4ecdc4;">GET</strong> = El método (qué hacer: leer, escribir, etc.)</li>
+                        <li><strong style="color: #ffa657;">http://localhost:3000</strong> = La dirección del servidor</li>
+                        <li><strong style="color: #79c0ff;">/contador</strong> = El endpoint específico (la "puerta")</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card" style="background: rgba(233, 69, 96, 0.1); border: 1px solid #e94560;">
+                <h4>📌 Resumen</h4>
+                <p><strong>Endpoint = URL específica</strong> que hace una acción particular en la API.</p>
+                <p>Es como una dirección exacta: <code>/contador/increment</code> es el lugar donde vas a "incrementar el contador".</p>
             </div>
         </section>
 
@@ -973,6 +1044,101 @@ app.use(cors());
 app.use(express.json());
 
 const contractId = process.env.CONTRACT_ID;</code></pre>
+            </div>
+        </section>
+
+        <section id="estructura-api">
+            <h2>🏗️ Estructura de una API REST</h2>
+            
+            <div class="card" style="background: linear-gradient(135deg, #0f3460 0%, #1a1a2e 100%);">
+                <h4 style="color: #4ecdc4; margin-bottom: 20px;">📐 Partes de una API</h4>
+                
+                <div style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;">
+                    <div class="arch-box" style="flex: 1; min-width: 150px;">
+                        <h5 style="color: #4ecdc4;">1️⃣ Cliente</h5>
+                        <p style="font-size: 0.9em;">Tu navegador, app o código que hace las peticiones</p>
+                        <code style="color: #79c0ff;">fetch('/contador')</code>
+                    </div>
+                    
+                    <div class="arch-box" style="flex: 1; min-width: 150px;">
+                        <h5 style="color: #e94560;">2️⃣ Servidor</h5>
+                        <p style="font-size: 0.9em;">Recibe peticiones y devuelve respuestas</p>
+                        <code style="color: #ffa657;">Express.js</code>
+                    </div>
+                    
+                    <div class="arch-box" style="flex: 1; min-width: 150px;">
+                        <h5 style="color: #4ecdc4;">3️⃣ Rutas</h5>
+                        <p style="font-size: 0.9em;">Los endpoints (las "puertas" específicas)</p>
+                        <code style="color: #79c0ff;">/contador/increment</code>
+                    </div>
+                    
+                    <div class="arch-box" style="flex: 1; min-width: 150px;">
+                        <h5 style="color: #e94560;">4️⃣ Métodos</h5>
+                        <p style="font-size: 0.9em;">Qué acción realizar (GET, POST, etc.)</p>
+                        <code style="color: #ffa657;">GET, POST, PUT, DELETE</code>
+                    </div>
+                </div>
+            </div>
+
+            <h3>🔗 Anatomía de una URL de API</h3>
+            <div class="clean-code-block">
+                <pre><code><span style="color: #4ecdc4;">https</span>://<span style="color: #ffa657;">localhost</span>:<span style="color: #79c0ff;">3000</span>/<span style="color: #d2a8ff;">contador</span>/<span style="color: #a5d6ff;">increment</span>
+
+│              │              │         │          │
+│              │              │         │          └── 3. RECURSO (acción)
+│              │              │         └────────────── 2. ENDPOINT (ruta)
+│              │              └──────────────────────── 1. PUERTO
+│              └─────────────────────────────────────── SERVIDOR
+└────────────────────────────────────────────────────── PROTOCOLO</code></pre>
+            </div>
+
+            <h3>📋 Métodos HTTP</h3>
+            <table>
+                <tr>
+                    <th>Método</th>
+                    <th>Descripción</th>
+                    <th>Ejemplo</th>
+                </tr>
+                <tr>
+                    <td><code style="color: #4ecdc4;">GET</code></td>
+                    <td>Leer / Obtener datos</td>
+                    <td>Ver el contador</td>
+                </tr>
+                <tr>
+                    <td><code style="color: #ffc107;">POST</code></td>
+                    <td>Crear / Enviar datos</td>
+                    <td>Incrementar (+1)</td>
+                </tr>
+                <tr>
+                    <td><code style="color: #e94560;">PUT</code></td>
+                    <td>Actualizar datos</td>
+                    <td>Cambiar valor</td>
+                </tr>
+                <tr>
+                    <td><code style="color: #8b949e;">DELETE</code></td>
+                    <td>Borrar datos</td>
+                    <td>Eliminar contador</td>
+                </tr>
+            </table>
+
+            <h3>💬 Formato de Datos: JSON</h3>
+            <div class="code-block">
+                <code><span class="comment">// La API siempre devuelve JSON (como objetos de JS)</span>
+{
+    <span class="type">"valor"</span>: <span class="number">5</span>,
+    <span class="type">"success"</span>: <span class="keyword">true</span>,
+    <span class="type">"txHash"</span>: <span class="string">"abc123..."</span>
+}</code>
+            </div>
+
+            <div class="card" style="background: rgba(78, 205, 196, 0.1); border: 1px solid #4ecdc4;">
+                <h4>✅ Resumen Visual</h4>
+                <pre style="color: #c0c0c0; font-size: 0.85em;">┌─────────────┐    GET /contador    ┌─────────────┐
+│             │ ─────────────────▶   │             │
+│  CLIENTE    │                     │   SERVIDOR  │
+│             │ ◀──────────────────  │   (Express) │
+│  (Navegador)│    { valor: 5 }     │             │
+└─────────────┘                     └─────────────┘</pre>
             </div>
         </section>
 
