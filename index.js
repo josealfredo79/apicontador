@@ -57,6 +57,9 @@ const secretKey = process.env.SECRET_KEY;
 app.use(cors());              // Permite que cualquier página web puede usar esta API
 app.use(express.json());     // Permite leer datos JSON en las peticiones
 
+// Servir archivo estático (index.html)
+app.use(express.static(__dirname));
+
 // =============================================================================
 // 📥 FUNCIONES AUXILIARES (Herramientas reutilizables)
 // =============================================================================

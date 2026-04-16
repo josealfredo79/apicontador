@@ -435,6 +435,112 @@
             transform: scaleX(-1);
         }
 
+        /* Demo Interactivo */
+        .demo-container {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            margin: 20px 0;
+            border: 2px solid #4ecdc4;
+        }
+
+        .contador-display {
+            font-size: 2em;
+            margin: 20px 0;
+        }
+
+        .contador-label {
+            color: #8b949e;
+        }
+
+        .contador-valor {
+            display: inline-block;
+            background: #4ecdc4;
+            color: #1a1a2e;
+            padding: 10px 30px;
+            border-radius: 10px;
+            font-weight: bold;
+            min-width: 80px;
+            margin-left: 15px;
+        }
+
+        .demo-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+
+        .btn-demo {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+
+        .btn-demo:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-demo:not(.increment):not(.decrement):not(.reset) {
+            background: #0f3460;
+            color: #fff;
+        }
+
+        .btn-demo.increment {
+            background: #4caf50;
+            color: #fff;
+        }
+
+        .btn-demo.decrement {
+            background: #e94560;
+            color: #fff;
+        }
+
+        .btn-demo.reset {
+            background: #ffc107;
+            color: #1a1a2e;
+        }
+
+        .demo-status {
+            color: #8b949e;
+            font-size: 0.9em;
+            padding: 10px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 5px;
+        }
+
+        .demo-flow {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            font-size: 0.85em;
+        }
+
+        .flow-step {
+            background: rgba(78, 205, 196, 0.2);
+            padding: 8px 15px;
+            border-radius: 5px;
+            color: #4ecdc4;
+        }
+
+        .flow-diagram {
+            background: #0d1117;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: 'Fira Code', monospace;
+            color: #4ecdc4;
+            white-space: pre-wrap;
+            text-align: left;
+        }
+
         .request-example {
             background: #0d1117;
             border-radius: 10px;
@@ -480,13 +586,15 @@
 
     <nav>
         <ul>
-            <li><a href="#intro">Introducción</a></li>
+            <li><a href="#intro">Intro</a></li>
             <li><a href="#animacion">Animación</a></li>
+            <li><a href="#consumo">Consumo API</a></li>
+            <li><a href="#demo">Demo</a></li>
+            <li><a href="#ciclo">Ciclo</a></li>
             <li><a href="#instalacion">Instalación</a></li>
-            <li><a href="#configuracion">Configuración</a></li>
+            <li><a href="#configuracion">Config</a></li>
             <li><a href="#endpoints">Endpoints</a></li>
             <li><a href="#pruebas">Pruebas</a></li>
-            <li><a href="#comandos">Comandos</a></li>
         </ul>
     </nav>
 
@@ -549,6 +657,206 @@
                 <span class="status-badge status-success">Conexión TestNet</span>
                 <span class="status-badge status-success">Manejo de Errores</span>
                 <span class="status-badge status-success">CORS Habilitado</span>
+            </div>
+        </section>
+
+        <section id="consumo">
+            <h2>💻 Cómo Consumir la API</h2>
+            
+            <div class="card">
+                <h4>🔑 Concepto Clave</h4>
+                <p>Consumir una API significa <strong>pedirle datos o enviarle acciones</strong> desde tu código JavaScript, como si fuera una conversación:</p>
+                <div class="code-block" style="margin-top: 15px;">
+                    <code><span class="comment">// Tu código pregunta:</span>
+<span class="keyword">fetch</span>(<span class="string">'/contador'</span>)
+
+<span class="comment">// La API responde:</span>
+{ valor: <span class="number">5</span>, success: <span class="keyword">true</span> }</code>
+                </div>
+            </div>
+
+            <h3>1️⃣ Con fetch() (Nativo del navegador)</h3>
+            <div class="clean-code-block">
+                <div class="code-header" style="display: flex; justify-content: space-between; align-items: center; background: #161b22; padding: 10px 15px; border-radius: 10px 10px 0 0; margin: -20px -20px 0 -20px;">
+                    <span style="color: #4ecdc4; font-weight: bold;">📋 Ejemplo con fetch()</span>
+                    <button class="copy-code-btn" onclick="copyCode(this)">📋 Copiar</button>
+                </div>
+                <pre><code>// 📥 LEER el valor del contador
+async function obtenerContador() {
+    const respuesta = await fetch('http://localhost:3000/contador');
+    const datos = await respuesta.json();
+    console.log('Valor actual:', datos.valor);
+    return datos;
+}
+
+// ➕ INCREMENTAR el contador
+async function incrementar() {
+    const respuesta = await fetch('http://localhost:3000/contador/increment', {
+        method: 'POST'
+    });
+    const datos = await respuesta.json();
+    console.log('Nuevo valor:', datos.valor);
+    return datos;
+}
+
+// ➖ DECREMENTAR el contador
+async function decrementar() {
+    const respuesta = await fetch('http://localhost:3000/contador/decrement', {
+        method: 'POST'
+    });
+    const datos = await respuesta.json();
+    console.log('Nuevo valor:', datos.valor);
+    return datos;
+}
+
+// 🔄 RESETEAR a 0
+async function resetear() {
+    const respuesta = await fetch('http://localhost:3000/contador/reset', {
+        method: 'POST'
+    });
+    const datos = await respuesta.json();
+    console.log(datos.mensaje);
+    return datos;
+}</code></pre>
+            </div>
+
+            <h3>2️⃣ Con Axios (Librería popular)</h3>
+            <div class="clean-code-block">
+                <div class="code-header" style="display: flex; justify-content: space-between; align-items: center; background: #161b22; padding: 10px 15px; border-radius: 10px 10px 0 0; margin: -20px -20px 0 -20px;">
+                    <span style="color: #4ecdc4; font-weight: bold;">📋 Ejemplo con Axios</span>
+                    <button class="copy-code-btn" onclick="copyCode(this)">📋 Copiar</button>
+                </div>
+                <pre><code><span class="comment">// Instalar: npm install axios</span>
+
+<span class="keyword">import</span> axios from <span class="string">'axios'</span>;
+
+<span class="comment">// 📥 Obtener valor</span>
+<span class="keyword">const</span> datos = <span class="keyword">await</span> axios.get(<span class="string">'http://localhost:3000/contador'</span>);
+
+<span class="comment">// ➕ Incrementar</span>
+<span class="keyword">const</span> resultado = <span class="keyword">await</span> axios.post(<span class="string">'http://localhost:3000/contador/increment'</span>);
+
+<span class="comment">// 👍 Más fácil, el resultado ya viene en datos.data</span>
+console.log(resultado.data.valor);</code></pre>
+            </div>
+
+            <h3>3️⃣ Con jQuery</h3>
+            <div class="clean-code-block">
+                <div class="code-header" style="display: flex; justify-content: space-between; align-items: center; background: #161b22; padding: 10px 15px; border-radius: 10px 10px 0 0; margin: -20px -20px 0 -20px;">
+                    <span style="color: #4ecdc4; font-weight: bold;">📋 Ejemplo con jQuery</span>
+                    <button class="copy-code-btn" onclick="copyCode(this)">📋 Copiar</button>
+                </div>
+                <pre><code><span class="comment">// 📥 Obtener valor</span>
+$.get(<span class="string">'http://localhost:3000/contador'</span>, <span class="function">function</span>(data) {
+    $(<span class="string">'#valor'</span>).text(data.valor);
+});
+
+<span class="comment">// ➕ Incrementar</span>
+$.post(<span class="string">'http://localhost:3000/contador/increment'</span>, <span class="function">function</span>(data) {
+    alert(<span class="string">`Nuevo valor: </span>${data.valor}<span class="string">`</span>);
+});</code></pre>
+            </div>
+
+            <div class="card">
+                <h4>📊 Cuándo usar cada método</h4>
+                <table>
+                    <tr>
+                        <th>Método</th>
+                        <th>Cuándo usarlo</th>
+                    </tr>
+                    <tr>
+                        <td><strong>fetch()</strong></td>
+                        <td>Proyectos modernos, no necesita librería</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Axios</strong></td>
+                        <td>Proyectos grandes, quiere más funcionalidades</td>
+                    </tr>
+                    <tr>
+                        <td><strong>jQuery</strong></td>
+                        <td>Proyectos legacy o aprendizaje básico</td>
+                    </tr>
+                </table>
+            </div>
+        </section>
+
+        <section id="demo">
+            <h2>🧪 Demo Interactivo</h2>
+            <p>¡Pruébalo aquí mismo! Haz clic en los botones para interactuar con el contador real.</p>
+            
+            <div class="demo-container">
+                <div class="contador-display">
+                    <span class="contador-label">Contador Actual:</span>
+                    <span class="contador-valor" id="demo-valor">?</span>
+                </div>
+                
+                <div class="demo-buttons">
+                    <button class="btn-demo" onclick="demoGet()">📥 Leer</button>
+                    <button class="btn-demo increment" onclick="demoIncrement()">➕ +1</button>
+                    <button class="btn-demo decrement" onclick="demoDecrement()">➖ -1</button>
+                    <button class="btn-demo reset" onclick="demoReset()">🔄 Reset</button>
+                </div>
+                
+                <div class="demo-status" id="demo-status">Listo para usar</div>
+            </div>
+
+            <div class="card" style="margin-top: 20px;">
+                <h4>💡 ¿Qué está pasando?</h4>
+                <div class="demo-flow">
+                    <div class="flow-step">1. Haces clic</div>
+                    <div class="flow-step">→</div>
+                    <div class="flow-step">2. JS llama API</div>
+                    <div class="flow-step">→</div>
+                    <div class="flow-step">3. API→Blockchain</div>
+                    <div class="flow-step">→</div>
+                    <div class="flow-step">4. Mostrar valor</div>
+                </div>
+            </div>
+        </section>
+
+        <section id="ciclo">
+            <h2>🔄 Ciclo Request-Response (Detallado)</h2>
+            
+            <div class="card">
+                <h4>🌐 Flujo Completo</h4>
+                <pre class="flow-diagram">
+1. Petición:      NAVEGADOR → API (/contador)
+2. Proceso:       API → SOROBAN RPC → CONTRATO
+3. Ejecución:     CONTRATO retorna valor
+4. Respuesta:     CONTRATO → RPC → API → NAVEGADOR
+                </pre>
+            </div>
+
+            <div class="step">
+                <span class="step-number">1</span>
+                <strong>Cliente → API</strong>
+                <p style="margin-left: 40px; margin-top: 10px;">
+                    Tu navegador envía una petición HTTP a <code>http://localhost:3000/contador</code>
+                </p>
+            </div>
+
+            <div class="step">
+                <span class="step-number">2</span>
+                <strong>API → Blockchain</strong>
+                <p style="margin-left: 40px; margin-top: 10px;">
+                    El servidor transforma la petición en una transacción Soroban y la envía a TestNet
+                </p>
+            </div>
+
+            <div class="step">
+                <span class="step-number">3</span>
+                <strong>Blockchain procesa</strong>
+                <p style="margin-left: 40px; margin-top: 10px;">
+                    El smart contract ejecuta la lógica (get, increment, decrement, reset)
+                </p>
+            </div>
+
+            <div class="step">
+                <span class="step-number">4</span>
+                <strong>Respuesta ← Cliente</strong>
+                <p style="margin-left: 40px; margin-top: 10px;">
+                    El resultado vuelve por el mismo camino hasta tu navegador
+                </p>
             </div>
         </section>
 
@@ -919,6 +1227,82 @@ curl http://localhost:3000/contador</code></pre>
                 btn.disabled = false;
                 btn.textContent = '▶️ Reproducir Animación';
             }, 5000);
+        }
+
+        async function demoGet() {
+            const statusEl = document.getElementById('demo-status');
+            const valorEl = document.getElementById('demo-valor');
+            
+            statusEl.textContent = '⏳ Consultando contador...';
+            statusEl.style.color = '#ffc107';
+            
+            try {
+                const res = await fetch('/contador');
+                const data = await res.json();
+                valorEl.textContent = data.valor;
+                statusEl.textContent = '✅ Valor actual: ' + data.valor;
+                statusEl.style.color = '#4ecdc4';
+            } catch (error) {
+                statusEl.textContent = '❌ Error: Servidor no disponible. Asegúrate de ejecutar "npm start"';
+                statusEl.style.color = '#e94560';
+            }
+        }
+
+        async function demoIncrement() {
+            const statusEl = document.getElementById('demo-status');
+            const valorEl = document.getElementById('demo-valor');
+            
+            statusEl.textContent = '⏳ Incrementando...';
+            statusEl.style.color = '#ffc107';
+            
+            try {
+                const res = await fetch('/contador/increment', { method: 'POST' });
+                const data = await res.json();
+                valorEl.textContent = data.valor;
+                statusEl.textContent = '✅ Nuevo valor: ' + data.valor;
+                statusEl.style.color = '#4ecdc4';
+            } catch (error) {
+                statusEl.textContent = '❌ Error: ' + error.message;
+                statusEl.style.color = '#e94560';
+            }
+        }
+
+        async function demoDecrement() {
+            const statusEl = document.getElementById('demo-status');
+            const valorEl = document.getElementById('demo-valor');
+            
+            statusEl.textContent = '⏳ Decrementando...';
+            statusEl.style.color = '#ffc107';
+            
+            try {
+                const res = await fetch('/contador/decrement', { method: 'POST' });
+                const data = await res.json();
+                valorEl.textContent = data.valor;
+                statusEl.textContent = '✅ Nuevo valor: ' + data.valor;
+                statusEl.style.color = '#4ecdc4';
+            } catch (error) {
+                statusEl.textContent = '❌ Error: ' + error.message;
+                statusEl.style.color = '#e94560';
+            }
+        }
+
+        async function demoReset() {
+            const statusEl = document.getElementById('demo-status');
+            const valorEl = document.getElementById('demo-valor');
+            
+            statusEl.textContent = '⏳ Reiniciando...';
+            statusEl.style.color = '#ffc107';
+            
+            try {
+                const res = await fetch('/contador/reset', { method: 'POST' });
+                const data = await res.json();
+                valorEl.textContent = '0';
+                statusEl.textContent = '✅ ' + data.mensaje;
+                statusEl.style.color = '#4ecdc4';
+            } catch (error) {
+                statusEl.textContent = '❌ Error: ' + error.message;
+                statusEl.style.color = '#e94560';
+            }
         }
     </script>
 </body>
