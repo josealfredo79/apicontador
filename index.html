@@ -582,6 +582,10 @@
     <header>
         <h1>API REST <span>Soroban</span></h1>
         <p>Conecta tu aplicación web con el contrato inteligente en Stellar TestNet</p>
+        <div style="margin-top: 20px;">
+            <a href="demo.html" class="btn" style="background: #4ecdc4; color: #1a1a2e;">🎮 Demo Interactivo</a>
+            <a href="https://josealfredo79.github.io/apicontador/" class="btn" style="background: #e94560; color: #fff;">📺 Ver en GitHub Pages</a>
+        </div>
     </header>
 
     <nav>
@@ -602,7 +606,19 @@
         <section id="intro">
             <h2>📚 Introducción</h2>
             
-            <p>Esta API REST te permite interactuar con el <strong>Contrato Contador</strong> desplegado en Stellar TestNet desde cualquier aplicación web o móvil.</p>
+            <div class="card" style="background: linear-gradient(135deg, #0f3460 0%, #1a1a2e 100%); border: 2px solid #4ecdc4;">
+                <h4 style="color: #4ecdc4; margin-bottom: 15px;">🚀 Links Rápidos</h4>
+                <p style="margin-bottom: 10px;">Accede directamente a los recursos:</p>
+                <a href="demo.html" target="_blank" class="btn" style="background: #4ecdc4; color: #1a1a2e; display: inline-block; margin: 5px;">🎮 Demo Interactivo</a>
+                <a href="https://josealfredo79.github.io/apicontador/" target="_blank" class="btn" style="background: #e94560; color: #fff; display: inline-block; margin: 5px;">📺 Ver Tutorial Online</a>
+                <p style="margin-top: 15px; font-size: 0.9em; color: #8b949e;">
+                    💡 <strong>Nota:</strong> El Demo funciona en dos modos:<br>
+                    • <strong>Con servidor:</strong> Ejecutá <code>npm start</code> y el demo conecta a la blockchain real<br>
+                    • <strong>Sin servidor:</strong> El demo funciona en modo simulado (solo visual)
+                </p>
+            </div>
+            
+            <p style="margin-top: 20px;">Esta API REST te permite interactuar con el <strong>Contrato Contador</strong> desplegado en Stellar TestNet desde cualquier aplicación web o móvil.</p>
 
             <h3>🏗️ Arquitectura</h3>
             <div class="architecture">
