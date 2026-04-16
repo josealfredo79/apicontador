@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Contador - Demo</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        h1 { color: #4ecdc4; margin-bottom: 10px; }
+        .info { color: #8b949e; margin-bottom: 30px; text-align: center; }
+        .container {
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            padding: 40px;
+            border: 2px solid #4ecdc4;
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+        }
+        .counter-label { font-size: 1.2em; color: #8b949e; margin-bottom: 10px; }
+        .counter-value {
+            font-size: 4em;
+            font-weight: bold;
+            color: #4ecdc4;
+            text-shadow: 0 0 20px rgba(78, 205, 196, 0.5);
+            margin: 20px 0;
+        }
+        .buttons { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+        button {
+            padding: 15px 25px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        button:hover { transform: translateY(-3px); }
+        .btn-get { background: #0f3460; color: #fff; }
+        .btn-inc { background: #4caf50; color: #fff; }
+        .btn-dec { background: #e94560; color: #fff; }
+        .btn-reset { background: #ffc107; color: #1a1a2e; }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 0.9em;
+        }
+        .status.loading { background: rgba(255, 193, 7, 0.2); color: #ffc107; }
+        .status.success { background: rgba(78, 205, 196, 0.2); color: #4ecdc4; }
+        .status.error { background: rgba(233, 69, 96, 0.2); color: #e94560; }
+        .status.info { background: rgba(15, 52, 96, 0.5); color: #8b949e; }
+        .server-input {
+            margin-top: 30px;
+            padding: 15px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+        }
+        input {
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #4ecdc4;
+            background: #1a1a2e;
+            color: #fff;
+            width: 200px;
+        }
+        .config-note {
+            margin-top: 40px;
+            padding: 20px;
+            background: rgba(233, 69, 96, 0.1);
+            border-radius: 10px;
+            border: 1px solid #e94560;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔢 API Contador Soroban</h1>
+    <p class="info">Demo interactivo - Conecta con tu servidor local</p>
+    
+    <div class="container">
+        <div class="counter-label">Contador Actual:</div>
+        <div class="counter-value" id="valor">?</div>
+        
+        <div class="buttons">
+            <button class="btn-get" onclick="getContador()">📥 Leer</button>
+            <button class="btn-inc" onclick="incrementar()">➕ +1</button>
+            <button class="btn-dec" onclick="decrementar()">➖ -1</button>
+            <button class="btn-reset" onclick="resetear()">🔄 Reset</button>
+        </div>
+        
+        <div class="status info" id="status">
+            ℹ️ Ingresa la URL de tu servidor y haz clic en "Leer"
+        </div>
+    </div>
+
+    <div class="server-input">
+        <label>Servidor: </label>
+        <input type="text" id="serverUrl" value="http://localhost:3000" />
+    </div>
+
+    <div class="config-note">
+        <strong>⚠️ Importante:</strong>
+        <p>Este demo necesita que tu servidor esté corriendo localmente.</p>
+        <p style="margin-top: 10px;"><strong>Para ejecutar el servidor:</strong></p>
+        <code style="color: #4ecdc4;">npm start</code>
+        <p style="margin-top: 5px;">Luego abre en tu navegador: <strong>http://localhost:3000</strong></p>
+    </div>
+
+    <script>
+        let contador = 0;
+        let modoDemo = false;
+        
+        function getServerUrl() {
+            return document.getElementById('serverUrl').value.replace(/\/$/, '');
+        }
+
+        function setStatus(mensaje, tipo) {
+            document.getElementById('status').textContent = mensaje;
+            document.getElementById('status').className = 'status ' + tipo;
+        }
+
+        function actualizarValor(valor) {
+            document.getElementById('valor').textContent = valor;
+            contador = valor;
+        }
+
+        async function getContador() {
+            const url = getServerUrl();
+            setStatus('⏳ Consultando contador...', 'loading');
+            
+            try {
+                const res = await fetch(url + '/contador');
+                if (!res.ok) throw new Error('Servidor no disponible');
+                const data = await res.json();
+                actualizarValor(data.valor);
+                setStatus('✅ Valor actual: ' + data.valor, 'success');
+                modoDemo = false;
+            } catch (error) {
+                modoDemo = true;
+                setStatus('⚠️ Servidor no disponible. Modo DEMO activdo (simulado)', 'info');
+                document.getElementById('valor').textContent = '?';
+            }
+        }
+
+        async function incrementar() {
+            const url = getServerUrl();
+            
+            if (modoDemo) {
+                contador++;
+                actualizarValor(contador);
+                setStatus('🔢 Modo Demo: Incrementado a ' + contador, 'info');
+                return;
+            }
+            
+            setStatus('⏳ Incrementando...', 'loading');
+            
+            try {
+                const res = await fetch(url + '/contador/increment', { method: 'POST' });
+                const data = await res.json();
+                actualizarValor(data.valor);
+                setStatus('✅ Nuevo valor: ' + data.valor, 'success');
+            } catch (error) {
+                setStatus('❌ Error: ' + error.message, 'error');
+            }
+        }
+
+        async function decrementar() {
+            const url = getServerUrl();
+            
+            if (modoDemo) {
+                contador = Math.max(0, contador - 1);
+                actualizarValor(contador);
+                setStatus('🔢 Modo Demo: Decrementado a ' + contador, 'info');
+                return;
+            }
+            
+            setStatus('⏳ Decrementando...', 'loading');
+            
+            try {
+                const res = await fetch(url + '/contador/decrement', { method: 'POST' });
+                const data = await res.json();
+                actualizarValor(data.valor);
+                setStatus('✅ Nuevo valor: ' + data.valor, 'success');
+            } catch (error) {
+                setStatus('❌ Error: ' + error.message, 'error');
+            }
+        }
+
+        async function resetear() {
+            const url = getServerUrl();
+            
+            if (modoDemo) {
+                contador = 0;
+                actualizarValor(0);
+                setStatus('🔢 Modo Demo: Reiniciado a 0', 'info');
+                return;
+            }
+            
+            setStatus('⏳ Reiniciando...', 'loading');
+            
+            try {
+                const res = await fetch(url + '/contador/reset', { method: 'POST' });
+                const data = await res.json();
+                actualizarValor(0);
+                setStatus('✅ ' + data.mensaje, 'success');
+            } catch (error) {
+                setStatus('❌ Error: ' + error.message, 'error');
+            }
+        }
+
+        // Intentar conectar automáticamente al cargar
+        window.onload = getContador;
+    </script>
+</body>
+</html>
