@@ -664,8 +664,8 @@ if (!contractId) {
     console.warn('⚠️  CONTRACT_ID no configurado en .env');
 }
 
-// Inicia el servidor
-app.listen(PORT, () => {
+// Inicia el servidor (0.0.0.0 requerido en Railway/Docker)
+app.listen(PORT, '0.0.0.0', () => {
     console.log('='.repeat(50));
     console.log('🎉 API Contador Soroban + Smart Wallet iniciada');
     console.log('📡 Servidor en: http://localhost:' + PORT);
