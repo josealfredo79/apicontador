@@ -98,7 +98,14 @@ require('dotenv').config(); // Carga configuración desde archivo .env
 
 const express = require('express');       // Framework para crear servidores web
 const cors = require('cors');             // Permite que otras páginas accedan a nuestra API
+const crypto = require('crypto');         // Módulo nativo de Node.js para criptografía
 const { Keypair, Networks, rpc, TransactionBuilder, BASE_FEE, Contract, scValToNative } = require('@stellar/stellar-sdk');
+const {
+    generateRegistrationOptions,
+    verifyRegistrationResponse,
+    generateAuthenticationOptions,
+    verifyAuthenticationResponse,
+} = require('@simplewebauthn/server');    // Librería WebAuthn para Passkeys
 
 // =============================================================================
 // 🎯 INICIALIZACIÓN DEL SERVIDOR
@@ -107,7 +114,53 @@ const app = express();                    // Crea el servidor
 const PORT = process.env.PORT || 3000;   // Puerto donde escuchará el servidor
 
 // =============================================================================
-// 📡 CONEXIÓN A STELLAR SOROBAN
+// � SMART WALLET — ALMACENAMIENTO EN MEMORIA (demo académico)
+// =============================================================================
+// En producción esto viviría en una base de datos (PostgreSQL, MongoDB, etc.)
+//
+// Estructura de cada usuario:
+//   { id, username, walletId, credentials: [{ id, publicKey, counter, transports }] }
+//
+// walletId simula la dirección del Smart Wallet Contract en Soroban.
+// En una DApp real se desplegaría el contrato Stellar passkey-kit.
+
+const walletUsers    = new Map(); // username → usuario registrado
+const authChallenges = new Map(); // username → challenge activo (expira en 5 min)
+const activeSessions = new Map(); // token   → { username, walletId, exp }
+
+const RP_NAME = 'DApp Contador Soroban';
+// RP_ID debe coincidir con el hostname del navegador (sin puerto)
+const RP_ID   = process.env.RP_ID || 'localhost';
+
+/* generateToken()
+ * Genera un token de sesión aleatorio de 256 bits.
+ */
+function generateToken() {
+    return crypto.randomBytes(32).toString('hex');
+}
+
+/* requireAuth(req, res, next)
+ * --------------------------
+ * Middleware que protege endpoints de escritura.
+ * Valida el token Bearer enviado en el header Authorization.
+ */
+function requireAuth(req, res, next) {
+    const header = req.headers['authorization'] || '';
+    const token  = header.startsWith('Bearer ') ? header.slice(7) : null;
+    if (!token) {
+        return res.status(401).json({ error: 'No autorizado. Autentícate con tu Passkey.', success: false });
+    }
+    const session = activeSessions.get(token);
+    if (!session || session.exp < Date.now()) {
+        activeSessions.delete(token);
+        return res.status(401).json({ error: 'Sesión expirada. Vuelve a autenticarte.', success: false });
+    }
+    req.session = session;
+    next();
+}
+
+// =============================================================================
+// �📡 CONEXIÓN A STELLAR SOROBAN
 // =============================================================================
 // RPC (Remote Procedure Call) es como una conexión a la blockchain
 const server = new rpc.Server(process.env.RPC_URL || 'https://soroban-testnet.stellar.org');
@@ -193,13 +246,18 @@ async function ejecutarContrato(funcionNombre) {
     const contrato = new Contract(contractId);
     
     // Paso 2: Crear transacción
-    const transaccion = new TransactionBuilder(cuenta, {
+    let transaccion = new TransactionBuilder(cuenta, {
         fee: BASE_FEE,
         networkPassphrase: Networks.TESTNET
     })
     .addOperation(contrato.call(funcionNombre))
     .setTimeout(30)
     .build();
+
+    // IMPORTANTE: Antes de firmar, debemos "preparar" la transacción.
+    // Esto simula la ejecución en la red de pruebas para calcular
+    // exactamente qué recursos consumirá el contrato.
+    transaccion = await server.prepareTransaction(transaccion);
 
     // Paso 3: Firmar con nuestra clave secreta
     transaccion.sign(clave);
@@ -218,8 +276,8 @@ async function ejecutarContrato(funcionNombre) {
         }
 
         if (respuestaTx.status === 'SUCCESS') {
-            const resultado = respuestaTx.resultValue();
-            const valor = scValToNative(resultado);
+            const resultado = respuestaTx.returnValue;
+            const valor = resultado ? scValToNative(resultado) : null;
             return { success: true, valor, txHash: respuestaEnvio.hash };
         }
         throw new Error('Transacción fallida');
@@ -282,15 +340,16 @@ app.get('/contador', async (req, res) => {
  * Ejemplo de uso:
  * - Terminal: curl -X POST http://localhost:3000/count/increment
  */
-app.post('/contador/increment', async (req, res) => {
+app.post('/contador/increment', requireAuth, async (req, res) => {
     try {
-        console.log('➕ Incrementando contador...');
+        console.log(`➕ Incrementando contador... (wallet: ${req.session.walletId})`);
         const resultado = await ejecutarContrato('increment');
         res.json({ 
             valor: resultado.valor, 
             txHash: resultado.txHash, 
             success: true,
-            mensaje: 'Contador incrementado (+1)'
+            mensaje: 'Contador incrementado (+1)',
+            wallet: req.session.walletId,
         });
     } catch (error) {
         console.error('❌ Error:', error.message);
@@ -302,15 +361,16 @@ app.post('/contador/increment', async (req, res) => {
  * ---------------------------------
  * POST /contador/decrement: Resta 1 al contador
  */
-app.post('/contador/decrement', async (req, res) => {
+app.post('/contador/decrement', requireAuth, async (req, res) => {
     try {
-        console.log('➖ Decrementando contador...');
+        console.log(`➖ Decrementando contador... (wallet: ${req.session.walletId})`);
         const resultado = await ejecutarContrato('decrement');
         res.json({ 
             valor: resultado.valor, 
             txHash: resultado.txHash, 
             success: true,
-            mensaje: 'Contador decrementado (-1)'
+            mensaje: 'Contador decrementado (-1)',
+            wallet: req.session.walletId,
         });
     } catch (error) {
         console.error('❌ Error:', error.message);
@@ -322,18 +382,277 @@ app.post('/contador/decrement', async (req, res) => {
  * ------------------------------
  * POST /contador/reset: Reinicia el contador a 0
  */
-app.post('/contador/reset', async (req, res) => {
+app.post('/contador/reset', requireAuth, async (req, res) => {
     try {
-        console.log('🔄 Reiniciando contador a 0...');
+        console.log(`🔄 Reiniciando contador a 0... (wallet: ${req.session.walletId})`);
         await ejecutarContrato('reset');
         res.json({ 
             success: true, 
-            mensaje: 'Contador reiniciado a 0' 
+            mensaje: 'Contador reiniciado a 0',
+            wallet: req.session.walletId,
         });
     } catch (error) {
         console.error('❌ Error:', error.message);
         res.status(500).json({ error: error.message, success: false });
     }
+});
+
+// =============================================================================
+// � ENDPOINTS DE AUTENTICACIÓN — SMART WALLET CON PASSKEYS (WebAuthn)
+// =============================================================================
+
+/* POST /auth/register/begin
+ * -------------------------
+ * Paso 1 del registro: genera un challenge y opciones para crear la Passkey.
+ * El navegador usará esto para pedirle al usuario que use biometría.
+ */
+app.post('/auth/register/begin', async (req, res) => {
+    try {
+        const { username } = req.body;
+        if (!username?.trim()) {
+            return res.status(400).json({ error: 'El campo "username" es requerido' });
+        }
+
+        // Crear usuario si no existe, asignándole un walletId único (simula la
+        // dirección del Smart Wallet Contract en Soroban)
+        if (!walletUsers.has(username)) {
+            walletUsers.set(username, {
+                id: username,
+                username,
+                credentials: [],
+                walletId: 'GW' + crypto.randomBytes(10).toString('hex').toUpperCase(),
+            });
+        }
+        const user = walletUsers.get(username);
+
+        const options = await generateRegistrationOptions({
+            rpName: RP_NAME,
+            rpID:   RP_ID,
+            userID: Buffer.from(username),
+            userName: username,
+            attestationType: 'none',
+            excludeCredentials: user.credentials.map(c => ({
+                id:         Buffer.from(c.id, 'base64url'),
+                type:       'public-key',
+                transports: c.transports,
+            })),
+            authenticatorSelection: {
+                residentKey:          'preferred',
+                userVerification:     'preferred',
+                requireResidentKey:   false,
+            },
+        });
+
+        // Guardamos el challenge temporalmente (5 minutos)
+        authChallenges.set(username, options.challenge);
+        setTimeout(() => authChallenges.delete(username), 5 * 60 * 1000);
+
+        res.json(options);
+    } catch (err) {
+        console.error('❌ register/begin error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+/* POST /auth/register/complete
+ * ----------------------------
+ * Paso 2 del registro: verifica la respuesta biométrica del dispositivo
+ * y guarda la credencial pública en el Smart Wallet del usuario.
+ */
+app.post('/auth/register/complete', async (req, res) => {
+    try {
+        const { username, attestation } = req.body;
+        if (!username || !attestation) {
+            return res.status(400).json({ error: 'Faltan campos: username, attestation' });
+        }
+
+        const expectedChallenge = authChallenges.get(username);
+        if (!expectedChallenge) {
+            return res.status(400).json({ error: 'Challenge expirado o no encontrado. Vuelve a intentarlo.' });
+        }
+
+        const origin = req.headers.origin || `http://localhost:${PORT}`;
+        const verification = await verifyRegistrationResponse({
+            response:           attestation,
+            expectedChallenge,
+            expectedOrigin:     origin,
+            expectedRPID:       RP_ID,
+        });
+
+        if (!verification.verified) {
+            return res.status(400).json({ error: 'Verificación de Passkey fallida' });
+        }
+
+        const { credentialID, credentialPublicKey, counter } = verification.registrationInfo;
+        const user = walletUsers.get(username);
+
+        user.credentials.push({
+            id:        Buffer.from(credentialID).toString('base64url'),
+            publicKey: Buffer.from(credentialPublicKey).toString('base64url'),
+            counter,
+            transports: attestation.response?.transports || [],
+        });
+
+        authChallenges.delete(username);
+
+        // Crear sesión de 24 horas
+        const token = generateToken();
+        activeSessions.set(token, {
+            username,
+            walletId: user.walletId,
+            exp: Date.now() + 24 * 60 * 60 * 1000,
+        });
+
+        console.log(`✅ Smart Wallet registrado: ${username} → ${user.walletId}`);
+        res.json({ verified: true, token, walletId: user.walletId, username });
+    } catch (err) {
+        console.error('❌ register/complete error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+/* POST /auth/login/begin
+ * ----------------------
+ * Paso 1 del login: genera un challenge para que el dispositivo
+ * demuestre que controla la clave privada de la Passkey.
+ */
+app.post('/auth/login/begin', async (req, res) => {
+    try {
+        const { username } = req.body;
+        if (!username?.trim()) {
+            return res.status(400).json({ error: 'El campo "username" es requerido' });
+        }
+
+        const user = walletUsers.get(username);
+        if (!user) {
+            return res.status(404).json({ error: 'Usuario no encontrado. Regístrate primero.' });
+        }
+        if (user.credentials.length === 0) {
+            return res.status(400).json({ error: 'Sin Passkeys registradas para este usuario.' });
+        }
+
+        const options = await generateAuthenticationOptions({
+            rpID:             RP_ID,
+            userVerification: 'preferred',
+            allowCredentials: user.credentials.map(c => ({
+                id:         Buffer.from(c.id, 'base64url'),
+                type:       'public-key',
+                transports: c.transports,
+            })),
+        });
+
+        authChallenges.set(username, options.challenge);
+        setTimeout(() => authChallenges.delete(username), 5 * 60 * 1000);
+
+        res.json(options);
+    } catch (err) {
+        console.error('❌ login/begin error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+/* POST /auth/login/complete
+ * -------------------------
+ * Paso 2 del login: verifica la firma biométrica y emite un token de sesión.
+ * El token permite al usuario firmar transacciones en Soroban.
+ */
+app.post('/auth/login/complete', async (req, res) => {
+    try {
+        const { username, assertion } = req.body;
+        if (!username || !assertion) {
+            return res.status(400).json({ error: 'Faltan campos: username, assertion' });
+        }
+
+        const user = walletUsers.get(username);
+        if (!user) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+        const expectedChallenge = authChallenges.get(username);
+        if (!expectedChallenge) {
+            return res.status(400).json({ error: 'Challenge expirado. Intenta de nuevo.' });
+        }
+
+        // Buscar la credencial que firmó la respuesta
+        const credential = user.credentials.find(c => c.id === assertion.id);
+        if (!credential) {
+            return res.status(400).json({ error: 'Credencial no reconocida en este Smart Wallet.' });
+        }
+
+        const origin = req.headers.origin || `http://localhost:${PORT}`;
+        const verification = await verifyAuthenticationResponse({
+            response:           assertion,
+            expectedChallenge,
+            expectedOrigin:     origin,
+            expectedRPID:       RP_ID,
+            authenticator: {
+                credentialID:        Buffer.from(credential.id, 'base64url'),
+                credentialPublicKey: Buffer.from(credential.publicKey, 'base64url'),
+                counter:             credential.counter,
+                transports:          credential.transports,
+            },
+        });
+
+        if (!verification.verified) {
+            return res.status(400).json({ error: 'Autenticación biométrica fallida.' });
+        }
+
+        // Actualizar counter anti-replay
+        credential.counter = verification.authenticationInfo.newCounter;
+        authChallenges.delete(username);
+
+        const token = generateToken();
+        activeSessions.set(token, {
+            username,
+            walletId: user.walletId,
+            exp: Date.now() + 24 * 60 * 60 * 1000,
+        });
+
+        console.log(`🔓 Login Passkey: ${username} → ${user.walletId}`);
+        res.json({ verified: true, token, walletId: user.walletId, username });
+    } catch (err) {
+        console.error('❌ login/complete error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+/* GET /auth/status
+ * ----------------
+ * Verifica si el token de sesión actual sigue siendo válido.
+ */
+app.get('/auth/status', (req, res) => {
+    const header = req.headers['authorization'] || '';
+    const token  = header.startsWith('Bearer ') ? header.slice(7) : null;
+    if (!token) return res.json({ authenticated: false });
+
+    const session = activeSessions.get(token);
+    if (!session || session.exp < Date.now()) {
+        activeSessions.delete(token);
+        return res.json({ authenticated: false });
+    }
+    res.json({ authenticated: true, username: session.username, walletId: session.walletId });
+});
+
+/* POST /auth/logout
+ * -----------------
+ * Cierra la sesión invalidando el token.
+ */
+app.post('/auth/logout', (req, res) => {
+    const header = req.headers['authorization'] || '';
+    const token  = header.startsWith('Bearer ') ? header.slice(7) : null;
+    if (token) activeSessions.delete(token);
+    res.json({ success: true, mensaje: 'Sesión cerrada correctamente.' });
+});
+
+/* GET /auth/users (solo para demo académico — eliminar en producción)
+ * ------------------------------------------------------------------
+ * Lista los usuarios registrados y sus walletIds.
+ */
+app.get('/auth/users', (req, res) => {
+    const users = Array.from(walletUsers.values()).map(u => ({
+        username:         u.username,
+        walletId:         u.walletId,
+        totalCredenciales: u.credentials.length,
+    }));
+    res.json({ users, total: users.length });
 });
 
 // =============================================================================
@@ -348,8 +667,9 @@ if (!contractId) {
 // Inicia el servidor
 app.listen(PORT, () => {
     console.log('='.repeat(50));
-    console.log('🎉 API Contador Soroban iniciada');
+    console.log('🎉 API Contador Soroban + Smart Wallet iniciada');
     console.log('📡 Servidor en: http://localhost:' + PORT);
     console.log('📋 Documentación: http://localhost:' + PORT + '/');
+    console.log('🔐 DApp + Passkeys: http://localhost:' + PORT + '/dapp.html');
     console.log('='.repeat(50));
 });

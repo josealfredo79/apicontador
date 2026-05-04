@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DApp Contador Soroban — Smart Wallet con Passkeys</title>
+  <!-- @simplewebauthn/browser v9 via CDN -->
+  <script src="https://unpkg.com/@simplewebauthn/browser@9/dist/bundle/index.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0d1117;
+      --surface:  #161b22;
+      --border:   #30363d;
+      --accent:   #4ecdc4;
+      --accent2:  #e94560;
+      --gold:     #ffa657;
+      --green:    #3fb950;
+      --red:      #f85149;
+      --text:     #c9d1d9;
+      --muted:    #8b949e;
+      --radius:   12px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: linear-gradient(135deg, #0f3460 0%, #1a1a2e 100%);
+      border-bottom: 2px solid var(--accent);
+      padding: 28px 40px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    header .logo { font-size: 2.4rem; }
+    header h1 { font-size: 1.6rem; color: #fff; }
+    header h1 span { color: var(--accent); }
+    header p  { color: var(--muted); font-size: 0.9rem; margin-top: 4px; }
+    .badge {
+      margin-left: auto;
+      background: rgba(78,205,196,.15);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    /* ── LAYOUT ── */
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 32px 24px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    @media (max-width: 720px) { main { grid-template-columns: 1fr; } }
+
+    .panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+    }
+    .panel-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 22px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    /* ── WALLET PANEL ── */
+    .wallet-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      margin-bottom: 20px;
+      padding: 10px 14px;
+      background: rgba(255,255,255,.04);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex-shrink: 0;
+    }
+    .dot.online  { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .dot.offline { background: var(--red); }
+
+    .wallet-info {
+      background: rgba(78,205,196,.06);
+      border: 1px solid rgba(78,205,196,.25);
+      border-radius: 8px;
+      padding: 14px;
+      margin-bottom: 20px;
+      font-size: 0.82rem;
+      display: none;
+    }
+    .wallet-info.visible { display: block; }
+    .wallet-info .label  { color: var(--muted); margin-bottom: 4px; }
+    .wallet-info .value  {
+      color: var(--accent);
+      font-family: monospace;
+      font-size: 0.78rem;
+      word-break: break-all;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 0.95rem;
+      margin-bottom: 12px;
+      transition: border-color .2s;
+    }
+    input[type="text"]:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+      width: 100%;
+      margin-bottom: 10px;
+    }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-primary  { background: var(--accent);  color: #0d1117; }
+    .btn-primary:hover:not(:disabled)  { background: #3bb8af; transform: translateY(-1px); }
+    .btn-secondary{ background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+    .btn-secondary:hover:not(:disabled){ background: rgba(78,205,196,.1); }
+    .btn-danger   { background: transparent; color: var(--red); border: 1px solid var(--red); }
+    .btn-danger:hover:not(:disabled)   { background: rgba(248,81,73,.1); }
+
+    .separator {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.8rem;
+      margin: 6px 0 14px;
+      position: relative;
+    }
+    .separator::before, .separator::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      width: calc(50% - 24px);
+      height: 1px;
+      background: var(--border);
+    }
+    .separator::before { left: 0; }
+    .separator::after  { right: 0; }
+
+    .alert {
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      margin-top: 12px;
+      display: none;
+    }
+    .alert.visible { display: block; }
+    .alert-success { background: rgba(63,185,80,.12);  border: 1px solid rgba(63,185,80,.4);  color: var(--green); }
+    .alert-error   { background: rgba(248,81,73,.12);  border: 1px solid rgba(248,81,73,.4);  color: var(--red); }
+    .alert-info    { background: rgba(78,205,196,.10); border: 1px solid rgba(78,205,196,.3); color: var(--accent); }
+
+    /* ── COUNTER PANEL ── */
+    .counter-display {
+      text-align: center;
+      padding: 28px 0 20px;
+    }
+    .counter-value {
+      font-size: 5rem;
+      font-weight: 800;
+      color: #fff;
+      line-height: 1;
+      letter-spacing: -2px;
+      transition: transform .15s, color .3s;
+    }
+    .counter-value.bump { transform: scale(1.15); }
+    .counter-value.bump-up   { color: var(--green); }
+    .counter-value.bump-down { color: var(--red); }
+
+    .counter-label {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-top: 6px;
+    }
+
+    .counter-actions {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 12px;
+      align-items: center;
+      margin-top: 20px;
+    }
+    .btn-counter {
+      border: none;
+      border-radius: var(--radius);
+      font-size: 1.8rem;
+      font-weight: 700;
+      height: 60px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .btn-counter:disabled { opacity: .3; cursor: not-allowed; transform: none !important; }
+    .btn-inc { background: rgba(63,185,80,.15);  color: var(--green); border: 1px solid rgba(63,185,80,.4); }
+    .btn-dec { background: rgba(248,81,73,.15);  color: var(--red);   border: 1px solid rgba(248,81,73,.4); }
+    .btn-inc:hover:not(:disabled) { background: rgba(63,185,80,.3);  transform: scale(1.06); }
+    .btn-dec:hover:not(:disabled) { background: rgba(248,81,73,.3);  transform: scale(1.06); }
+
+    .btn-reset-sm {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .btn-reset-sm:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); }
+    .btn-reset-sm:disabled { opacity: .3; cursor: not-allowed; }
+
+    .auth-lock {
+      text-align: center;
+      padding: 20px 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .auth-lock .lock-icon { font-size: 2.5rem; margin-bottom: 8px; }
+
+    /* ── FULL-WIDTH BOTTOM PANELS ── */
+    .full-width {
+      grid-column: 1 / -1;
+    }
+
+    .tx-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 240px;
+      overflow-y: auto;
+    }
+    .tx-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.83rem;
+      animation: fadeIn .3s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+    .tx-op   { font-weight: 700; min-width: 80px; }
+    .tx-op.inc    { color: var(--green); }
+    .tx-op.dec    { color: var(--red); }
+    .tx-op.reset  { color: var(--gold); }
+    .tx-hash { color: var(--muted); font-family: monospace; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tx-val  { color: var(--accent); font-weight: 700; min-width: 40px; text-align: right; }
+    .tx-empty{ color: var(--muted); font-size: 0.85rem; text-align: center; padding: 20px; }
+
+    /* ── ARCH DIAGRAM ── */
+    .arch {
+      background: var(--bg);
+      border-radius: 8px;
+      padding: 20px;
+      font-family: monospace;
+      font-size: 0.78rem;
+      color: var(--muted);
+      white-space: pre;
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      margin-top: 16px;
+      line-height: 1.6;
+    }
+
+    /* ── SPINNER ── */
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,.2);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── FOOTER ── */
+    footer {
+      text-align: center;
+      padding: 24px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+    footer a { color: var(--accent); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<!-- ─── HEADER ─── -->
+<header>
+  <span class="logo">🔐</span>
+  <div>
+    <h1>DApp Contador <span>Soroban</span></h1>
+    <p>Smart Wallet con Passkeys (WebAuthn) — Actividad 2</p>
+  </div>
+  <span class="badge">Stellar Testnet</span>
+</header>
+
+<!-- ─── MAIN GRID ─── -->
+<main>
+
+  <!-- ════════════════════════════════════
+       PANEL 1 — SMART WALLET / AUTH
+  ═══════════════════════════════════════ -->
+  <div class="panel" id="walletPanel">
+    <div class="panel-title">
+      <span>🔑</span> Smart Wallet
+    </div>
+
+    <!-- Estado de conexión -->
+    <div class="wallet-status">
+      <span class="dot" id="statusDot"></span>
+      <span id="statusText">Sin conectar</span>
+    </div>
+
+    <!-- Info del wallet (visible cuando autenticado) -->
+    <div class="wallet-info" id="walletInfo">
+      <div class="label">👤 Usuario</div>
+      <div class="value" id="infoUser">—</div>
+      <div class="label" style="margin-top:10px">🏦 Wallet ID</div>
+      <div class="value" id="infoWallet">—</div>
+      <div class="label" style="margin-top:10px">⏳ Sesión expira</div>
+      <div class="value" id="infoExp">24 horas</div>
+    </div>
+
+    <!-- Formulario de auth -->
+    <div id="authForms">
+      <input type="text" id="usernameInput" placeholder="Nombre de usuario (ej: alice)" autocomplete="username" />
+
+      <button class="btn btn-primary" id="btnRegister" onclick="registerPasskey()">
+        ✦ Registrar con Passkey (biometría)
+      </button>
+      <div class="separator">o si ya tienes cuenta</div>
+      <button class="btn btn-secondary" id="btnLogin" onclick="loginPasskey()">
+        🔒 Conectar con Passkey
+      </button>
+    </div>
+
+    <!-- Botón de logout (visible cuando autenticado) -->
+    <button class="btn btn-danger" id="btnLogout" style="display:none" onclick="logout()">
+      ⬡ Cerrar Sesión
+    </button>
+
+    <div class="alert" id="walletAlert"></div>
+
+    <!-- Diagrama educativo -->
+    <details style="margin-top:20px">
+      <summary style="cursor:pointer;color:var(--muted);font-size:0.85rem">📚 ¿Cómo funciona? (expandir)</summary>
+      <div class="arch">Registro con Passkey:
+  1. Navegador → POST /auth/register/begin → Server
+  2. Server genera challenge (número random único)
+  3. Dispositivo pide biometría (huella / Face ID)
+  4. WebAuthn crea par de claves: pública + privada
+  5. Clave PRIVADA queda en el dispositivo (nunca sale)
+  6. Clave PÚBLICA + firma → POST /auth/register/complete
+  7. Server verifica y guarda la clave pública
+  8. Se emite token de sesión (24h)
+
+Login con Passkey:
+  1. Server genera nuevo challenge (anti-replay)
+  2. Dispositivo firma el challenge con clave privada
+  3. Server verifica con la clave pública guardada
+  4. Si válido → nuevo token de sesión
+
+Smart Wallet (concepto Soroban):
+  Cada usuario tiene un walletId único que simula la
+  dirección de un contrato Soroban. En producción se
+  desplegaría passkey-kit de Stellar y las TXs serían
+  firmadas directamente desde el contrato.</div>
+    </details>
+  </div>
+
+  <!-- ════════════════════════════════════
+       PANEL 2 — CONTADOR BLOCKCHAIN
+  ═══════════════════════════════════════ -->
+  <div class="panel" id="counterPanel">
+    <div class="panel-title">
+      <span>📊</span> Contador en Blockchain
+    </div>
+
+    <!-- Vista cuando NO está autenticado -->
+    <div id="lockedView" class="auth-lock">
+      <div class="lock-icon">🔒</div>
+      <p>Conecta tu Smart Wallet<br>para interactuar con el contrato</p>
+    </div>
+
+    <!-- Vista cuando SÍ está autenticado -->
+    <div id="unlockedView" style="display:none">
+      <div class="counter-display">
+        <div class="counter-value" id="counterVal">—</div>
+        <div class="counter-label">valor actual en Soroban Testnet</div>
+      </div>
+
+      <div class="counter-actions">
+        <button class="btn-counter btn-dec" id="btnDec" onclick="doAction('decrement')" disabled title="Decrementar">−</button>
+        <button class="btn-reset-sm" id="btnReset" onclick="doAction('reset')" disabled>↺ Reset</button>
+        <button class="btn-counter btn-inc" id="btnInc" onclick="doAction('increment')" disabled title="Incrementar">+</button>
+      </div>
+
+      <div class="alert" id="counterAlert" style="margin-top:16px"></div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════
+       PANEL 3 — HISTORIAL DE TXs (full)
+  ═══════════════════════════════════════ -->
+  <div class="panel full-width">
+    <div class="panel-title">
+      <span>📜</span> Historial de Transacciones
+    </div>
+    <ul class="tx-list" id="txList">
+      <li class="tx-empty">Las transacciones aparecerán aquí</li>
+    </ul>
+  </div>
+
+  <!-- ════════════════════════════════════
+       PANEL 4 — ARQUITECTURA (full)
+  ═══════════════════════════════════════ -->
+  <div class="panel full-width">
+    <div class="panel-title">
+      <span>🏗️</span> Arquitectura — Propuesta 4
+    </div>
+    <div class="arch">
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           DApp (este archivo)                               │
+│                                                                             │
+│   ┌──────────────────────┐          ┌──────────────────────────────────┐   │
+│   │   Smart Wallet UI    │          │     Contador Blockchain UI       │   │
+│   │  ┌────────────────┐  │          │  ┌──────────────────────────┐   │   │
+│   │  │ Passkey (WebAuthn)│  │          │  │  GET /contador (público) │   │   │
+│   │  │ navigator.creds│  │          │  │  POST /contador/increment│   │   │
+│   │  │   .create()    │  │          │  │  POST /contador/decrement│   │   │
+│   │  │   .get()       │  │          │  │  POST /contador/reset    │   │   │
+│   │  └────────────────┘  │          │  └──────────────────────────┘   │   │
+│   └──────────┬───────────┘          └────────────────┬─────────────────┘   │
+└──────────────┼──────────────────────────────────────┼─────────────────────┘
+               │  Bearer Token                         │  Bearer Token
+               ▼                                       ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         API REST (index.js)                                 │
+│                                                                             │
+│  ┌─────────────────────────┐    ┌──────────────────────────────────────┐   │
+│  │   Auth Endpoints        │    │   Counter Endpoints                  │   │
+│  │  POST /auth/register/*  │    │   GET    /contador      (público)    │   │
+│  │  POST /auth/login/*     │    │   POST   /contador/increment ←─ 🔐  │   │
+│  │  GET  /auth/status      │    │   POST   /contador/decrement ←─ 🔐  │   │
+│  │  POST /auth/logout      │    │   POST   /contador/reset    ←─ 🔐  │   │
+│  └──────────┬──────────────┘    └─────────────────────────────────────┘   │
+│             │                                    │                         │
+│  ┌──────────▼──────────────────────────────────▼─────────────────────┐   │
+│  │        requireAuth middleware  (valida Bearer token de sesión)     │   │
+│  └────────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────────────┘
+               │                                       │
+               ▼                                       ▼
+┌──────────────────────┐             ┌─────────────────────────────────────┐
+│   WebAuthn / FIDO2   │             │    Soroban Testnet (Stellar)        │
+│  (biometría local)   │             │    Contrato Contador                │
+│  Clave privada queda │             │    increment / decrement / reset    │
+│  en el dispositivo   │             └─────────────────────────────────────┘
+└──────────────────────┘</div>
+  </div>
+
+</main>
+
+<footer>
+  DApp Contador Soroban — Actividad 2 | 
+  <a href="/">📖 Documentación API</a> | 
+  <a href="https://passkeys.dev" target="_blank">passkeys.dev</a> | 
+  Stellar Testnet
+</footer>
+
+<!-- ─────────────────────────────────────────
+     JAVASCRIPT — DApp Logic
+────────────────────────────────────────── -->
+<script>
+  'use strict';
+
+  const { startRegistration, startAuthentication } = SimpleWebAuthnBrowser;
+
+  // ── Estado global ──
+  const API   = window.location.origin;
+  let   token = localStorage.getItem('sw_token') || null;
+  let   txHistory = [];
+
+  // ── Referencias DOM ──
+  const $ = id => document.getElementById(id);
+
+  // ══════════════════════════════════════════
+  // INICIALIZACIÓN
+  // ══════════════════════════════════════════
+  window.addEventListener('DOMContentLoaded', async () => {
+    if (token) {
+      await checkSession();
+    } else {
+      renderLoggedOut();
+    }
+  });
+
+  async function checkSession() {
+    try {
+      const r = await apiFetch('GET', '/auth/status');
+      if (r.authenticated) {
+        renderLoggedIn(r.username, r.walletId);
+        await loadCounter();
+      } else {
+        localStorage.removeItem('sw_token');
+        token = null;
+        renderLoggedOut();
+      }
+    } catch {
+      renderLoggedOut();
+    }
+  }
+
+  // ══════════════════════════════════════════
+  // REGISTRO — PASSKEY (WebAuthn)
+  // ══════════════════════════════════════════
+  async function registerPasskey() {
+    const username = $('usernameInput').value.trim();
+    if (!username) return showAlert('walletAlert', 'error', 'Ingresa un nombre de usuario.');
+
+    setLoading('btnRegister', true, 'Generando challenge…');
+    clearAlert('walletAlert');
+
+    try {
+      // Paso 1: obtener opciones del servidor
+      const optionsJSON = await apiFetch('POST', '/auth/register/begin', { username });
+
+      // Paso 2: navegador solicita biometría al usuario
+      showAlert('walletAlert', 'info', '🔐 Usa tu biometría (huella / Face ID / PIN) cuando aparezca el diálogo…');
+      const attestation = await startRegistration(optionsJSON);
+
+      // Paso 3: enviar respuesta al servidor para verificar
+      setLoading('btnRegister', true, 'Verificando…');
+      const result = await apiFetch('POST', '/auth/register/complete', { username, attestation });
+
+      token = result.token;
+      localStorage.setItem('sw_token', token);
+
+      renderLoggedIn(result.username, result.walletId);
+      showAlert('walletAlert', 'success', `✅ Smart Wallet creado: ${result.walletId.slice(0,18)}…`);
+      await loadCounter();
+
+    } catch (err) {
+      showAlert('walletAlert', 'error', err.message || 'Error en el registro');
+    } finally {
+      setLoading('btnRegister', false, '✦ Registrar con Passkey (biometría)');
+    }
+  }
+
+  // ══════════════════════════════════════════
+  // LOGIN — PASSKEY (WebAuthn)
+  // ══════════════════════════════════════════
+  async function loginPasskey() {
+    const username = $('usernameInput').value.trim();
+    if (!username) return showAlert('walletAlert', 'error', 'Ingresa tu nombre de usuario.');
+
+    setLoading('btnLogin', true, 'Generando challenge…');
+    clearAlert('walletAlert');
+
+    try {
+      // Paso 1: challenge del servidor
+      const optionsJSON = await apiFetch('POST', '/auth/login/begin', { username });
+
+      // Paso 2: biometría
+      showAlert('walletAlert', 'info', '🔐 Usa tu biometría para autenticarte…');
+      const assertion = await startAuthentication(optionsJSON);
+
+      // Paso 3: verificar
+      setLoading('btnLogin', true, 'Verificando firma…');
+      const result = await apiFetch('POST', '/auth/login/complete', { username, assertion });
+
+      token = result.token;
+      localStorage.setItem('sw_token', token);
+
+      renderLoggedIn(result.username, result.walletId);
+      showAlert('walletAlert', 'success', `✅ Conectado: ${result.walletId.slice(0,18)}…`);
+      await loadCounter();
+
+    } catch (err) {
+      showAlert('walletAlert', 'error', err.message || 'Error al conectar');
+    } finally {
+      setLoading('btnLogin', false, '🔒 Conectar con Passkey');
+    }
+  }
+
+  // ══════════════════════════════════════════
+  // LOGOUT
+  // ══════════════════════════════════════════
+  async function logout() {
+    try { await apiFetch('POST', '/auth/logout'); } catch {}
+    token = null;
+    localStorage.removeItem('sw_token');
+    renderLoggedOut();
+    $('counterVal').textContent = '—';
+    disableCounterBtns(true);
+  }
+
+  // ══════════════════════════════════════════
+  // CONTADOR — LEER
+  // ══════════════════════════════════════════
+  async function loadCounter() {
+    try {
+      const r = await apiFetch('GET', '/contador');
+      animateCounter(r.valor);
+    } catch (err) {
+      showAlert('counterAlert', 'error', 'Error al leer el contador: ' + err.message);
+    }
+  }
+
+  // ══════════════════════════════════════════
+  // CONTADOR — ACCIONES (increment / decrement / reset)
+  // ══════════════════════════════════════════
+  async function doAction(op) {
+    disableCounterBtns(true);
+    clearAlert('counterAlert');
+    showAlert('counterAlert', 'info', `⏳ Enviando transacción a Soroban…`);
+
+    try {
+      const r = await apiFetch('POST', `/contador/${op}`);
+      if (op !== 'reset') animateCounter(r.valor, op);
+      else { animateCounter(0, op); }
+
+      addTx(op, r.txHash || '—', r.valor ?? 0);
+      clearAlert('counterAlert');
+      showAlert('counterAlert', 'success', `✅ TX confirmada: ${(r.txHash || '').slice(0,14)}…`);
+      setTimeout(() => clearAlert('counterAlert'), 4000);
+    } catch (err) {
+      showAlert('counterAlert', 'error', err.message);
+    } finally {
+      disableCounterBtns(false);
+    }
+  }
+
+  // ══════════════════════════════════════════
+  // UI HELPERS
+  // ══════════════════════════════════════════
+  function renderLoggedIn(username, walletId) {
+    $('authForms').style.display  = 'none';
+    $('btnLogout').style.display  = 'block';
+    $('walletInfo').classList.add('visible');
+    $('statusDot').className = 'dot online';
+    $('statusText').textContent   = 'Conectado';
+    $('infoUser').textContent     = username;
+    $('infoWallet').textContent   = walletId;
+
+    $('lockedView').style.display   = 'none';
+    $('unlockedView').style.display = 'block';
+    disableCounterBtns(false);
+  }
+
+  function renderLoggedOut() {
+    $('authForms').style.display = 'block';
+    $('btnLogout').style.display = 'none';
+    $('walletInfo').classList.remove('visible');
+    $('statusDot').className = 'dot offline';
+    $('statusText').textContent = 'Sin conectar';
+
+    $('lockedView').style.display   = 'block';
+    $('unlockedView').style.display = 'none';
+    clearAlert('walletAlert');
+  }
+
+  function animateCounter(val, op) {
+    const el = $('counterVal');
+    el.textContent = val;
+    el.classList.remove('bump', 'bump-up', 'bump-down');
+    void el.offsetWidth; // reflow
+    if (op === 'increment') el.classList.add('bump', 'bump-up');
+    else if (op === 'decrement') el.classList.add('bump', 'bump-down');
+    else el.classList.add('bump');
+    setTimeout(() => el.classList.remove('bump', 'bump-up', 'bump-down'), 300);
+  }
+
+  function disableCounterBtns(state) {
+    $('btnInc').disabled   = state;
+    $('btnDec').disabled   = state;
+    $('btnReset').disabled = state;
+  }
+
+  function addTx(op, hash, val) {
+    const list = $('txList');
+    const empty = list.querySelector('.tx-empty');
+    if (empty) empty.remove();
+
+    const icons = { increment: '＋', decrement: '－', reset: '↺' };
+    const li = document.createElement('li');
+    li.className = 'tx-item';
+    li.innerHTML = `
+      <span class="tx-op ${op === 'increment' ? 'inc' : op === 'decrement' ? 'dec' : 'reset'}">
+        ${icons[op] || op}
+      </span>
+      <span class="tx-hash">${hash}</span>
+      <span class="tx-val">${val}</span>
+      <span style="color:var(--muted);font-size:.75rem">${new Date().toLocaleTimeString()}</span>
+    `;
+    list.prepend(li);
+    txHistory.push({ op, hash, val, ts: Date.now() });
+  }
+
+  function showAlert(id, type, msg) {
+    const el = $(id);
+    el.className = `alert alert-${type} visible`;
+    el.textContent = msg;
+  }
+  function clearAlert(id) {
+    const el = $(id);
+    el.className = 'alert';
+    el.textContent = '';
+  }
+
+  function setLoading(btnId, loading, text) {
+    const btn = $(btnId);
+    btn.disabled = loading;
+    btn.innerHTML = loading ? `<span class="spinner"></span> ${text}` : text;
+  }
+
+  // ══════════════════════════════════════════
+  // FETCH HELPER
+  // ══════════════════════════════════════════
+  async function apiFetch(method, path, body) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = 'Bearer ' + token;
+
+    const res = await fetch(API + path, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    return data;
+  }
+</script>
+</body>
+</html>

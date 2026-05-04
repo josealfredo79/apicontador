@@ -16,6 +16,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@simplewebauthn/server": "^9.0.3",
     "@stellar/stellar-sdk": "^15.0.1",
     "cors": "^2.8.6",
     "dotenv": "^16.6.1",
