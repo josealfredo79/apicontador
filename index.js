@@ -477,6 +477,7 @@ app.post('/auth/register/complete', async (req, res) => {
             expectedChallenge,
             expectedOrigin:     origin,
             expectedRPID:       RP_ID,
+            requireUserVerification: false,
         });
 
         if (!verification.verified) {
@@ -583,6 +584,7 @@ app.post('/auth/login/complete', async (req, res) => {
             expectedChallenge,
             expectedOrigin:     origin,
             expectedRPID:       RP_ID,
+            requireUserVerification: false,
             authenticator: {
                 credentialID:        Buffer.from(credential.id, 'base64url'),
                 credentialPublicKey: Buffer.from(credential.publicKey, 'base64url'),
